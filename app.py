@@ -34,14 +34,21 @@ async def hybrid_parsing(url: str) -> dict:
     try:
         logger.info(f"Parsing URL: {url}")
         result = await api.hybrid_parsing(url)
-        if not result:
+        if result is None:
             logger.error(f"No result returned for URL: {url}")
             return None
+
+        logger.info(f"Parsing result: {result}")
 
         video = result.get("video_data", {}).get("nwm_video_url_HQ")
         video_hq = result.get("video_data", {}).get("nwm_video_url_HQ")
         music = result.get("music", {}).get("play_url", {}).get("uri")
         caption = result.get("desc")
+
+        logger.info(f"Video URL: {video}")
+        logger.info(f"Video HQ URL: {video_hq}")
+        logger.info(f"Music URL: {music}")
+        logger.info(f"Caption: {caption}")
 
         if not video or not video_hq or not music or not caption:
             logger.error(f"Incomplete data for URL: {url}")
