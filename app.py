@@ -6,6 +6,7 @@ import requests
 from douyin_tiktok_scraper.scraper import Scraper
 from dotenv import load_dotenv
 import logging
+import json
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +34,7 @@ async def hybrid_parsing(url: str):
     try:
         logger.info(f"Parsing URL: {url}")
         result = await api.hybrid_parsing(url)
-        
+
         if not result:
             logger.error(f"No result returned for URL: {url}")
             return None
@@ -77,6 +78,12 @@ async def hybrid_parsing(url: str):
             return None
 
         return video_stream, video_stream_hq, music, caption, video_hq
+    except json.JSONDecodeError as e:
+        logger.error(f'JSON decode error: {str(e)}')
+        return None
+    except requests.RequestException as e:
+        logger.error(f'Error during requests: {str(e)}')
+        return None
     except Exception as e:
         logger.error(f'An error occurred: {str(e)}')
         return None
