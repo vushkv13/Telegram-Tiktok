@@ -12,10 +12,10 @@ load_dotenv()
 
 api = Scraper()
 token = os.getenv("TOKEN")
-BOT_USERNAME = '@ManukaAI_Bot'
+BOT_USERNAME = '@TikTokv_vbot'
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Support me on : https://www.paypal.me/ardha27')
+    await update.message.reply_text('Привет! ОТправь мне ссылку на ТикТок видео')
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Please type something so i can respond')
