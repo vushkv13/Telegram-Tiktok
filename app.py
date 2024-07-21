@@ -3,14 +3,14 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from io import BytesIO
 import os
 import requests
-from pytiktok import TikTokApi  # Импортируем TikTokApi
+from douyin_tiktok_scraper.scraper import Scraper
 from dotenv import load_dotenv
 import logging
 
 logging.getLogger().setLevel(logging.CRITICAL)
 load_dotenv()
 
-api = TikTokApi()  # Инициализируем TikTokApi
+api = Scraper()
 token = os.getenv("TOKEN")
 BOT_USERNAME = '@TikTokv_vbot'
 
@@ -25,31 +25,37 @@ async def custom_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def hybrid_parsing(url: str) -> dict:
     try:
-        # Извлекаем ID видео из URL
-        video_id = url.split('/')[-1]
-        if '?' in video_id:
-            video_id = video_id.split('?')[0]
+        # Hybrid parsing(Douyin/TikTok URL)
+        result = await api.hybrid_parsing(url)
 
-        # Получаем видео без водяного знака
-        video = api.video(id=video_id, no_watermark=True)
+        video = result["video_data"]["nwm_video_url_HQ"]
+        video_hq = result["video_data"]["nwm_video_url_HQ"]
+        music = result["music"]["play_url"]["uri"]
+        caption = result["desc"]
 
-        if video:
-            video_url = video['video']['download_addr']
-            caption = video['desc']
-            music = video['music']['play_url']
+        print("Video URL:", video)
+        print("Video_HQ URL:", video_hq)
+        print("Play URL:", music)
+        print("Caption:", caption)
+        
+        response_video = requests.get(video)
+        response_video_hq = requests.get(video_hq)
 
-            response_video = requests.get(video_url)
-            if response_video.status_code == 200:
-                video_stream = BytesIO(response_video.content)
-            else:
-                print(f"Failed to download MP4. Status code: {response_video.status_code}")
-                video_stream = None
+        if response_video.status_code == 200:
+            video_stream = BytesIO(response_video.content)
+        else:
+            print(f"Failed to download MP4. Status code: {response_video.status_code}")
 
-            return video_stream, music, caption
-
+        if response_video_hq.status_code == 200:
+            video_stream_hq = BytesIO(response_video_hq.content)
+        else:
+            print(f"Failed to download MP4. Status code: {response_video_hq.status_code}")
+        
     except Exception as e:
         print(f'An error occurred: {str(e)}')
         return None
+
+    return video_stream, video_stream_hq, music, caption, video_hq
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_type: str = update.message.chat.type
@@ -63,24 +69,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
     elif message_type == 'private':
         if "tiktok.com" in text:
+
             result = await hybrid_parsing(text)
 
             if result:
-                video_stream = result[0]
-                music = result[1]
-                caption = result[2]
+                video = result[0]
+                video_hq = result[1]
+                music = result[2]
+                caption = result[3]
+                link =  result[4]
+                text = "Link:\n" + link + "\n\n" + "Sound:\n" + music + "\n\n" + "Caption:\n" + caption
+                text_link = "Video is too large, sending link instead" + "\n\n" + "Link:\n" + link + "\n\n" + "Sound:\n" + music + "\n\n" + "Caption:\n" + caption
 
-                if video_stream:
-                    try:
-                        await update.message.reply_video(video=InputFile(video_stream), caption=caption)
-                    except Exception as e:
-                        if "Request Entity Too Large (413)" in str(e):
-                            print("Video is too large, sending link instead")
-                            await update.message.reply_text(f"Video is too large, caption: {caption}")
-                else:
-                    await update.message.reply_text("Failed to download the video.")
+                try:
+                    await update.message.reply_video(video=InputFile(video_hq), caption=text)
+                except Exception as e:
+                    if "Request Entity Too Large (413)" in str(e):
+                        print("Video is too large, sending link instead")
+                        await update.message.reply_text(text_link)
+
             else:
-                await update.message.reply_text("An error occurred while parsing the TikTok URL. Please ensure the URL is correct and try again.")
+                await update.message.reply_text("Please send only TikTok URL")
         else:
             await update.message.reply_text("Please send a TikTok URL")
             return
