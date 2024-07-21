@@ -89,7 +89,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         await update.message.reply_text(text_link)
 
             else:
-                await update.message.reply_text("Please send only TikTok URL")
+                await update.message.reply_text("Please send only TikTok URL123")
         else:
             await update.message.reply_text("Please send a TikTok URL")
             return
